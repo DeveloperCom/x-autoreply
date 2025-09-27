@@ -1,103 +1,156 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { MODEL } from '@/config/model';
+import { useRouter } from 'next/navigation';
+
+type Reply = {
+  type: string;
+  text: string;
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const router=useRouter()
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const [tweet, setTweet] = useState('');
+  const [examples, setExamples] = useState<string[]>(['']);
+  const [model, setModel] = useState<typeof MODEL[number]>(MODEL[0]);
+  const [replies, setReplies] = useState<Reply[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setReplies([]);
+    try {
+      const res = await fetch('/api/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: tweet,
+          model,
+          contextReplyExample: examples.filter(e => e.trim().length > 0),
+        }),
+      });
+
+      const data = await res.json();
+
+      // Expecting { replys: [ { type, text }, ... ] }
+      if (data.replys && Array.isArray(data.replys)) {
+        setReplies(data.replys);
+      } else {
+        setReplies([{ type: 'error', text: 'No valid replies returned.' }]);
+      }
+    } catch (e) {
+      setReplies([{ type: 'error', text: 'Error while generating reply.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = async (text: string, index: number) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleLogout = async() => {
+    try {
+      await fetch('/api/logout',{method:'POST'})
+      router.replace('/passkey')
+    }
+    catch {
+      alert('Unable to Logout')
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-black text-white px-4 py-6 md:px-10 md:py-10">
+      <div className="max-w-2xl mx-auto">
+        <div className='flex justify-around items-center mb-6'>
+          <h1 className="sm:text-2xl  font-semibold text-center">💬 AI Reply Generator</h1>
+          <button className='bg-blue-500 px-3 py-1 rounded text-[15px]' onClick={handleLogout}>Logout</button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+
+        {/* Model Selector */}
+        <div className="mb-4">
+          <label className="block text-sm mb-1">Select Model</label>
+          <select
+            value={model}
+            onChange={e => setModel(e.target.value as typeof MODEL[number])}
+            className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm"
+          >
+            {MODEL.map(m => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tweet Content */}
+        <label className="block text-sm mb-1">Tweet Content</label>
+        <textarea
+          className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm mb-4 resize-none"
+          rows={4}
+          value={tweet}
+          onChange={e => setTweet(e.target.value)}
+          placeholder="Paste tweet text here"
+        />
+
+        {/* Context Examples */}
+        <div className="mb-4">
+          <label className="block text-sm mb-2">Context Reply Examples (optional)</label>
+          {examples.map((ex, idx) => (
+            <input
+              key={idx}
+              className="w-full mb-2 bg-zinc-900 border border-zinc-700 rounded p-2 text-sm"
+              value={ex}
+              onChange={e => {
+                const updated = [...examples];
+                updated[idx] = e.target.value;
+                setExamples(updated);
+              }}
+              placeholder={`Example ${idx + 1}`}
+            />
+          ))}
+          <button
+            className="text-xs text-blue-400 underline"
+            onClick={() => setExamples([...examples, ''])}
+          >
+            + Add another
+          </button>
+        </div>
+
+        {/* Submit */}
+        <button
+          className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-sm mb-6 disabled:opacity-50"
+          disabled={loading || tweet.trim().length === 0}
+          onClick={handleSubmit}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          {loading ? 'Generating reply...' : 'Generate Reply'}
+        </button>
+
+        {/* AI Replies Output */}
+        {replies.length > 0 && (
+          <div className="bg-zinc-800 border border-zinc-700 p-4 rounded space-y-4">
+            <label className="block text-sm font-medium mb-2">AI-Generated Replies:</label>
+            {replies.map((r, i) => (
+              <div key={i} className="relative bg-zinc-900 p-3 rounded border border-zinc-700">
+                <div className="text-xs text-zinc-400 mb-1">{r.type}</div>
+                <p className="text-sm whitespace-pre-wrap">{r.text}</p>
+                <button
+                  className="absolute top-3 right-3 text-xs text-blue-400 hover:underline"
+                  onClick={() => handleCopy(r.text, i)}
+                >
+                  {copiedIndex === i ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
