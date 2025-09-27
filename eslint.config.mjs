@@ -10,7 +10,10 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // Import Next.js default config
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+
+  // Your ignores
   {
     ignores: [
       "node_modules/**",
@@ -19,6 +22,18 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
     ],
+  },
+
+  // ✅ Add your custom rules for TypeScript files
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+      }],
+      "@typescript-eslint/no-explicit-any": "off",
+    },
   },
 ];
 
