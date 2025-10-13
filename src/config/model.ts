@@ -1,5 +1,4 @@
 export const MODEL = [
-    'x-ai/grok-4-fast:free',
     'deepseek/deepseek-chat-v3.1:free',
     'z-ai/glm-4.5-air:free',
     'nvidia/nemotron-nano-9b-v2:free',
