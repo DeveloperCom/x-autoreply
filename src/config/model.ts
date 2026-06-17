@@ -1,7 +1,7 @@
 export const MODEL = [
-    'deepseek/deepseek-chat-v3.1:free',
-    'z-ai/glm-4.5-air:free',
-    'nvidia/nemotron-nano-9b-v2:free',
-    'meta-llama/llama-4-maverick:free',
-    'google/gemini-2.0-flash-exp:free'
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
+    'openrouter/owl-alpha',
+    'nex-agi/nex-n2-pro:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'openai/gpt-oss-120b:free'
 ] as const
