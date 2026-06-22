@@ -1,0 +1,47 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Settings {
+  id          String   @id @default("global")
+  xUsername   String   @default("")
+  updatedAt   DateTime @updatedAt
+}
+
+model Post {
+  id          String   @id @default(uuid())
+  content     String   @db.Text
+  likes       Int      @default(0)
+  retweets    Int      @default(0)
+  postedAt    DateTime @default(now())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Tone {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String   @default("")
+  goal        String   @db.Text
+  createdAt   DateTime @default(now())
+}
+
+model TargetModel {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  value     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  posts     Post[]
+  createdAt DateTime @default(now())
+}

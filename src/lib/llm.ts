@@ -1,41 +1,73 @@
 import OpenAI from 'openai';
 import { SYSTEM_PROMPT } from '@/config/prompt';
 
+// Use OpenRouter
 const openai = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-export async function callLLM(model: string, prompt: string) {
-    const completion = await openai.chat.completions.create({
-        model: model,
-        messages: [
-            {
-                role: 'system',
-                content: SYSTEM_PROMPT
-            },
-            {
-                role: 'user',
-                content: prompt,
-            },
-        ],
-    });
+export async function callLLMForReplies(
+  model: string,
+  prompt: string,
+  systemPrompt: string = SYSTEM_PROMPT,
+): Promise<{ type: string; text: string }[]> {
 
-    const raw = completion.choices[0].message?.content ?? '';
+  let raw = '';
 
-    let replies: { type: string; text: string }[] = [];
 
-    try {
-        const json = JSON.parse(raw);
-        if (Array.isArray(json.replys)) {
-            replies = json.replys;
-        } else {
-            throw new Error('Missing or invalid "replys" array');
-        }
-    } catch (e) {
-        throw new Error('Failed to parse JSON');
+  const completion = await openai.chat.completions.create({
+    model: model,
+    messages: [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  });
+  raw = completion.choices[0].message?.content ?? '';
+
+  // Parse JSON replies
+  try {
+    const json = JSON.parse(raw);
+    if (Array.isArray(json.replys)) {
+      return json.replys;
     }
+    if (Array.isArray(json.replies)) {
+      return json.replies;
+    }
+    throw new Error('Missing "replys" or "replies" field in output');
+  } catch {
+    throw new Error('Failed to parse JSON response: ' + raw);
+  }
+}
 
-    return replies;
+export async function callLLMForText(model: string, prompt: string, systemPrompt: string = '', openrouterKey: string)
+  : Promise<string> {
+
+  let raw = '';
+
+  const openai = new OpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: openrouterKey,
+  });
+  const messages = [];
+  if (systemPrompt) {
+    messages.push({ role: 'system', content: systemPrompt });
+  }
+  messages.push({ role: 'user', content: prompt });
+
+  const completion = await openai.chat.completions.create({
+    model: model,
+    messages: messages as any,
+  });
+  raw = completion.choices[0].message?.content ?? '';
+
+  return raw.trim();
 }
 

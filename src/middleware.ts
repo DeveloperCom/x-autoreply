@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verify } from '@/lib/auth';
 
-const PROTECTED_PATHS = ['/', '/api/reply'];
+const PROTECTED_PATHS = ['/', '/generate', '/replies', '/history', '/api/reply'];
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
@@ -36,7 +36,7 @@ export async function middleware(req: NextRequest) {
     }
     throw new Error('Invalid passkey')
 
-  } catch(e) {
+  } catch {
     if (pathname.startsWith('/api')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
